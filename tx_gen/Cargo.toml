@@ -1,0 +1,82 @@
+[package]
+name = "tx_gen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+solana-sdk = { path = "../agave/sdk", version = "=2.1.7" }
+rand = "0.8.5"
+rayon = "1.10.0"
+spl-instruction-padding = "0.2"
+# tps-client = { path = "../agave/tps-client" }
+
+
+[patch.crates-io]
+# for details, see https://github.com/anza-xyz/crossbeam/commit/fd279d707025f0e60951e429bf778b4813d1b6bf
+crossbeam-epoch = { git = "https://github.com/anza-xyz/crossbeam", rev = "fd279d707025f0e60951e429bf778b4813d1b6bf" }
+
+# We include the following crates as our dependencies above from crates.io:
+#
+#  * spl-associated-token-account
+#  * spl-instruction-padding
+#  * spl-memo
+#  * spl-pod
+#  * spl-token
+#  * spl-token-2022
+#  * spl-token-metadata-interface
+#
+# They, in turn, depend on a number of crates that we also include directly
+# using `path` specifications.  For example, `spl-token` depends on
+# `solana-program`.  And we explicitly specify `solana-program` above as a local
+# path dependency:
+#
+#     solana-program = { path = "../../sdk/program", version = "=1.16.0" }
+#
+# Unfortunately, Cargo will try to resolve the `spl-token` `solana-program`
+# dependency only using what is available on crates.io.  Crates.io normally
+# contains a previous version of these crates, and we end up with two versions
+# of `solana-program` and `solana-zk-token-sdk` and all of their dependencies in
+# our build tree.
+#
+# If you are developing downstream using non-crates-io solana-program (local or
+# forked repo, or from github rev, eg), duplicate the following patch statements
+# in your Cargo.toml. If you still hit duplicate-type errors with the patch
+# statements in place, run `cargo update -p solana-program` and/or `cargo update
+# -p solana-zk-token-sdk` to remove extraneous versions from your Cargo.lock
+# file.
+#
+# There is a similar override in `programs/sbf/Cargo.toml`.  Please keep both
+# comments and the overrides in sync.
+solana-curve25519 = { path = "../agave/curves/curve25519" }
+solana-program = { path = "../agave/sdk/program" }
+solana-zk-sdk = { path = "../agave/zk-sdk" }
+solana-zk-token-sdk = { path = "../agave/zk-token-sdk" }
+
+# curve25519-dalek uses the simd backend by default in v4 if possible,
+# which has very slow performance on some platforms with opt-level 0,
+# which is the default for dev and test builds.
+# This slowdown causes certain interactions in the solana-test-validator,
+# such as verifying ZK proofs in transactions, to take much more than 400ms,
+# creating problems in the testing environment.
+# To enable better performance in solana-test-validator during tests and dev builds,
+# we override the opt-level to 3 for the crate.
+[profile.dev.package.curve25519-dalek]
+opt-level = 3
+
+# Solana RPC nodes experience stalls when running with `tokio` containing this
+# commit:
+# https://github.com/tokio-rs/tokio/commit/4eed411519783ef6f58cbf74f886f91142b5cfa6
+#
+# Tokio maintainers believe performance degradation is due to application bugs:
+# https://github.com/tokio-rs/tokio/issues/4873#issuecomment-1198277677
+#
+# This may indeed be true of the code in this monorepo, but we haven't yet
+# identified the bug or a way to fix. As a stopgap, this patches `tokio` to the
+# tagged version specified above with commit `4eed411` reverted.
+#
+# Comparison:
+# https://github.com/tokio-rs/tokio/compare/tokio-1.29.1...solana-labs:solana-tokio:tokio-1.29.1-revert-4eed411
+#
+[patch.crates-io.tokio]
+git = "https://github.com/anza-xyz/solana-tokio.git"
+rev = "7cf47705faacf7bf0e43e4131a5377b3291fce21"
