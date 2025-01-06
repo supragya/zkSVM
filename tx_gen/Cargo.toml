@@ -5,9 +5,21 @@ edition = "2021"
 
 [dependencies]
 solana-sdk = { path = "../agave/sdk", version = "=2.1.7" }
+solana-faucet = { path = "../agave/faucet", version = "=2.1.7" }
+solana-tps-client = { path = "../agave/tps-client", version = "=2.1.7" }
+solana-bench-tps = { path = "../agave/bench-tps", version = "=2.1.7" }
+solana-local-cluster = { path = "../agave/local-cluster", version = "=2.1.7" }
+solana-core = { path = "../agave/core", version = "=2.1.7" }
+solana-rpc = { path = "../agave/rpc", version = "=2.1.7" }
+solana-streamer = { path = "../agave/streamer", version = "=2.1.7" }
+chrono = { version = "0.4.38", default-features = false }
+chrono-humanize = "0.2.3"
+crossbeam-channel = "0.5.13"
 rand = "0.8.5"
 rayon = "1.10.0"
 spl-instruction-padding = "0.2"
+thiserror = "1.0.65"
+rand_chacha = "0.3.1"
 # tps-client = { path = "../agave/tps-client" }
 
 
