@@ -5,4 +5,5 @@ fn main() {
         let env = SvmTestEnvironment::create(test_entry);
         env.execute();
     }
+    println!("All tests passed!");
 }
