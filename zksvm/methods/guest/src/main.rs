@@ -1,4 +1,5 @@
 use risc0_zkvm::guest::env;
+mod hardcoded_programs;
 
 fn main() {
     // TODO: Implement your guest code here

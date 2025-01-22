@@ -1,5 +1,16 @@
 # RISC Zero for zk SVM
 
+## Preloading programs
+
+Part of zkSVM requires us to load programs from disk. Since such access is not available in zk setting, a `programs_preloader` executable creates a rust module with required read bytes for in-zkVM consumption.
+
+Use it as follows:
+```
+cd programs_preloader && cargo run 
+cd ..
+cp programs_preloader/hardcoded_programs.rs methods/guest/src/
+```
+
 ## Quick Start
 
 First, make sure [rustup] is installed. The
