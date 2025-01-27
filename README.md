@@ -11,5 +11,5 @@ Find the diff here: https://github.com/supragya/agave/compare/v2.1.7...supragya:
 export RUST_LOG="info"
 export RISC0_DEV_MODE=1
 cd zksvm
-cargo run
+cargo run --bin host
 ```

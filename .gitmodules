@@ -1,3 +1,6 @@
 [submodule "agave"]
 	path = agave
 	url = git@github.com:supragya/agave.git
+[submodule "ring"]
+	path = ring
+	url = git@github.com:supragya/ring.git
