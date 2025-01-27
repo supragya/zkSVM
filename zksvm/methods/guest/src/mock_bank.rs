@@ -35,9 +35,6 @@ use {
     std::{
         cmp::Ordering,
         collections::HashMap,
-        env,
-        fs::{self, File},
-        io::Read,
     },
 };
 
@@ -119,21 +116,7 @@ impl MockBankCallback {
 
 #[allow(unused)]
 fn load_program(name: String) -> Vec<u8> {
-    // Loading the program file
-    let mut dir = env::current_dir().unwrap();
-    dir.push("..");
-    dir.push("agave");
-    dir.push("svm");
-    dir.push("tests");
-    dir.push("example-programs");
-    dir.push(name.as_str());
-    let name = name.replace('-', "_");
-    dir.push(name + "_program.so");
-    let mut file = File::open(dir.clone()).expect("file not found");
-    let metadata = fs::metadata(dir).expect("Unable to read metadata");
-    let mut buffer = vec![0; metadata.len() as usize];
-    file.read_exact(&mut buffer).expect("Buffer overflow");
-    buffer
+    crate::hardcoded_programs::load_program(name)
 }
 
 #[allow(unused)]

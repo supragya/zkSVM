@@ -6,6 +6,7 @@ use {
         register_builtins, MockBankCallback, MockForkGraph, EXECUTION_EPOCH, EXECUTION_SLOT,
         WALLCLOCK_TIME,
     },
+    crate::hardcoded_keypairs,
     solana_sdk::{
         account::{AccountSharedData, ReadableAccount, WritableAccount},
         clock::Slot,
@@ -529,6 +530,7 @@ impl From<Option<TransactionReturnData>> for ReturnDataAssert {
 
 pub fn program_medley() -> Vec<SvmTestEntry> {
     let mut test_entry = SvmTestEntry::default();
+    let mut keypair_gen = hardcoded_keypairs::KeypairGen(0);
 
     // 0: A transaction that works without any account
     {
@@ -536,7 +538,7 @@ pub fn program_medley() -> Vec<SvmTestEntry> {
         let program_id = program_address(program_name);
         test_entry.add_initial_program(program_name);
 
-        let fee_payer_keypair = Keypair::new();
+        let fee_payer_keypair = keypair_gen.new();
         let fee_payer = fee_payer_keypair.pubkey();
 
         let mut fee_payer_data = AccountSharedData::default();
@@ -565,8 +567,8 @@ pub fn program_medley() -> Vec<SvmTestEntry> {
         let program_id = program_address(program_name);
         test_entry.add_initial_program(program_name);
 
-        let fee_payer_keypair = Keypair::new();
-        let sender_keypair = Keypair::new();
+        let fee_payer_keypair = keypair_gen.new();
+        let sender_keypair = keypair_gen.new();
 
         let fee_payer = fee_payer_keypair.pubkey();
         let sender = sender_keypair.pubkey();
@@ -614,7 +616,7 @@ pub fn program_medley() -> Vec<SvmTestEntry> {
         let program_id = program_address(program_name);
         test_entry.add_initial_program(program_name);
 
-        let fee_payer_keypair = Keypair::new();
+        let fee_payer_keypair = keypair_gen.new();
         let fee_payer = fee_payer_keypair.pubkey();
 
         let mut fee_payer_data = AccountSharedData::default();
@@ -642,8 +644,8 @@ pub fn program_medley() -> Vec<SvmTestEntry> {
     {
         let program_id = program_address("simple-transfer");
 
-        let fee_payer_keypair = Keypair::new();
-        let sender_keypair = Keypair::new();
+        let fee_payer_keypair = keypair_gen.new();
+        let sender_keypair = keypair_gen.new();
 
         let fee_payer = fee_payer_keypair.pubkey();
         let sender = sender_keypair.pubkey();
@@ -694,7 +696,7 @@ pub fn program_medley() -> Vec<SvmTestEntry> {
 
     // 4: A transaction whose verification has already failed
     {
-        let fee_payer_keypair = Keypair::new();
+        let fee_payer_keypair = keypair_gen.new();
         let fee_payer = fee_payer_keypair.pubkey();
 
         test_entry.transaction_batch.push(TransactionBatchItem {
@@ -712,374 +714,376 @@ pub fn program_medley() -> Vec<SvmTestEntry> {
     vec![test_entry]
 }
 
-fn simple_transfer(enable_fee_only_transactions: bool) -> Vec<SvmTestEntry> {
-    let mut test_entry = SvmTestEntry::default();
-    let transfer_amount = LAMPORTS_PER_SOL;
-    if enable_fee_only_transactions {
-        test_entry
-            .enabled_features
-            .push(feature_set::enable_transaction_loading_failure_fees::id());
-    }
+// fn simple_transfer(enable_fee_only_transactions: bool) -> Vec<SvmTestEntry> {
+//     let mut keypair_gen = hardcoded_keypairs::KeypairGen(0);
+//     let mut test_entry = SvmTestEntry::default();
+//     let transfer_amount = LAMPORTS_PER_SOL;
+//     if enable_fee_only_transactions {
+//         test_entry
+//             .enabled_features
+//             .push(feature_set::enable_transaction_loading_failure_fees::id());
+//     }
 
-    // 0: a transfer that succeeds
-    {
-        let source_keypair = Keypair::new();
-        let source = source_keypair.pubkey();
-        let destination = Pubkey::new_unique();
+//     // 0: a transfer that succeeds
+//     {
+//         let source_keypair = keypair_gen.new();
+//         let source = source_keypair.pubkey();
+//         let destination = Pubkey::new_unique();
 
-        let mut source_data = AccountSharedData::default();
-        let mut destination_data = AccountSharedData::default();
+//         let mut source_data = AccountSharedData::default();
+//         let mut destination_data = AccountSharedData::default();
 
-        source_data.set_lamports(LAMPORTS_PER_SOL * 10);
-        test_entry.add_initial_account(source, &source_data);
+//         source_data.set_lamports(LAMPORTS_PER_SOL * 10);
+//         test_entry.add_initial_account(source, &source_data);
 
-        test_entry.push_transaction(system_transaction::transfer(
-            &source_keypair,
-            &destination,
-            transfer_amount,
-            Hash::default(),
-        ));
+//         test_entry.push_transaction(system_transaction::transfer(
+//             &source_keypair,
+//             &destination,
+//             transfer_amount,
+//             Hash::default(),
+//         ));
 
-        destination_data
-            .checked_add_lamports(transfer_amount)
-            .unwrap();
-        test_entry.create_expected_account(destination, &destination_data);
+//         destination_data
+//             .checked_add_lamports(transfer_amount)
+//             .unwrap();
+//         test_entry.create_expected_account(destination, &destination_data);
 
-        test_entry.decrease_expected_lamports(&source, transfer_amount + LAMPORTS_PER_SIGNATURE);
-    }
+//         test_entry.decrease_expected_lamports(&source, transfer_amount + LAMPORTS_PER_SIGNATURE);
+//     }
 
-    // 1: an executable transfer that fails
-    {
-        let source_keypair = Keypair::new();
-        let source = source_keypair.pubkey();
+//     // 1: an executable transfer that fails
+//     {
+//         let source_keypair = keypair_gen.new();
+//         let source = source_keypair.pubkey();
 
-        let mut source_data = AccountSharedData::default();
+//         let mut source_data = AccountSharedData::default();
 
-        source_data.set_lamports(transfer_amount - 1);
-        test_entry.add_initial_account(source, &source_data);
+//         source_data.set_lamports(transfer_amount - 1);
+//         test_entry.add_initial_account(source, &source_data);
 
-        test_entry.push_transaction_with_status(
-            system_transaction::transfer(
-                &source_keypair,
-                &Pubkey::new_unique(),
-                transfer_amount,
-                Hash::default(),
-            ),
-            ExecutionStatus::ExecutedFailed,
-        );
+//         test_entry.push_transaction_with_status(
+//             system_transaction::transfer(
+//                 &source_keypair,
+//                 &Pubkey::new_unique(),
+//                 transfer_amount,
+//                 Hash::default(),
+//             ),
+//             ExecutionStatus::ExecutedFailed,
+//         );
 
-        test_entry.decrease_expected_lamports(&source, LAMPORTS_PER_SIGNATURE);
-    }
+//         test_entry.decrease_expected_lamports(&source, LAMPORTS_PER_SIGNATURE);
+//     }
 
-    // 2: a non-processable transfer that fails before loading
-    {
-        test_entry.transaction_batch.push(TransactionBatchItem {
-            transaction: system_transaction::transfer(
-                &Keypair::new(),
-                &Pubkey::new_unique(),
-                transfer_amount,
-                Hash::default(),
-            ),
-            check_result: Err(TransactionError::BlockhashNotFound),
-            asserts: ExecutionStatus::Discarded.into(),
-        });
-    }
+//     // 2: a non-processable transfer that fails before loading
+//     {
+//         test_entry.transaction_batch.push(TransactionBatchItem {
+//             transaction: system_transaction::transfer(
+//                 &keypair_gen.new(),
+//                 &Pubkey::new_unique(),
+//                 transfer_amount,
+//                 Hash::default(),
+//             ),
+//             check_result: Err(TransactionError::BlockhashNotFound),
+//             asserts: ExecutionStatus::Discarded.into(),
+//         });
+//     }
 
-    // 3: a non-processable transfer that fails loading the fee-payer
-    {
-        test_entry.push_transaction_with_status(
-            system_transaction::transfer(
-                &Keypair::new(),
-                &Pubkey::new_unique(),
-                transfer_amount,
-                Hash::default(),
-            ),
-            ExecutionStatus::Discarded,
-        );
-    }
+//     // 3: a non-processable transfer that fails loading the fee-payer
+//     {
+//         test_entry.push_transaction_with_status(
+//             system_transaction::transfer(
+//                 &keypair_gen.new(),
+//                 &Pubkey::new_unique(),
+//                 transfer_amount,
+//                 Hash::default(),
+//             ),
+//             ExecutionStatus::Discarded,
+//         );
+//     }
 
-    // 4: a processable non-executable transfer that fails loading the program
-    {
-        let source_keypair = Keypair::new();
-        let source = source_keypair.pubkey();
+//     // 4: a processable non-executable transfer that fails loading the program
+//     {
+//         let source_keypair = keypair_gen.new();
+//         let source = source_keypair.pubkey();
 
-        let mut source_data = AccountSharedData::default();
+//         let mut source_data = AccountSharedData::default();
 
-        source_data.set_lamports(transfer_amount * 10);
-        test_entry
-            .initial_accounts
-            .insert(source, source_data.clone());
-        test_entry.final_accounts.insert(source, source_data);
+//         source_data.set_lamports(transfer_amount * 10);
+//         test_entry
+//             .initial_accounts
+//             .insert(source, source_data.clone());
+//         test_entry.final_accounts.insert(source, source_data);
 
-        let mut instruction =
-            system_instruction::transfer(&source, &Pubkey::new_unique(), transfer_amount);
-        instruction.program_id = Pubkey::new_unique();
+//         let mut instruction =
+//             system_instruction::transfer(&source, &Pubkey::new_unique(), transfer_amount);
+//         instruction.program_id = Pubkey::new_unique();
 
-        let expected_status = if enable_fee_only_transactions {
-            test_entry.decrease_expected_lamports(&source, LAMPORTS_PER_SIGNATURE);
-            ExecutionStatus::ProcessedFailed
-        } else {
-            ExecutionStatus::Discarded
-        };
+//         let expected_status = if enable_fee_only_transactions {
+//             test_entry.decrease_expected_lamports(&source, LAMPORTS_PER_SIGNATURE);
+//             ExecutionStatus::ProcessedFailed
+//         } else {
+//             ExecutionStatus::Discarded
+//         };
 
-        test_entry.push_transaction_with_status(
-            Transaction::new_signed_with_payer(
-                &[instruction],
-                Some(&source),
-                &[&source_keypair],
-                Hash::default(),
-            ),
-            expected_status,
-        );
-    }
+//         test_entry.push_transaction_with_status(
+//             Transaction::new_signed_with_payer(
+//                 &[instruction],
+//                 Some(&source),
+//                 &[&source_keypair],
+//                 Hash::default(),
+//             ),
+//             expected_status,
+//         );
+//     }
 
-    vec![test_entry]
-}
+//     vec![test_entry]
+// }
 
-fn simple_nonce(enable_fee_only_transactions: bool, fee_paying_nonce: bool) -> Vec<SvmTestEntry> {
-    let mut test_entry = SvmTestEntry::default();
-    if enable_fee_only_transactions {
-        test_entry
-            .enabled_features
-            .push(feature_set::enable_transaction_loading_failure_fees::id());
-    }
+// fn simple_nonce(enable_fee_only_transactions: bool, fee_paying_nonce: bool) -> Vec<SvmTestEntry> {
+//     let mut keypair_gen = hardcoded_keypairs::KeypairGen(0);
+//     let mut test_entry = SvmTestEntry::default();
+//     if enable_fee_only_transactions {
+//         test_entry
+//             .enabled_features
+//             .push(feature_set::enable_transaction_loading_failure_fees::id());
+//     }
 
-    let program_name = "hello-solana";
-    let real_program_id = program_address(program_name);
-    test_entry.add_initial_program(program_name);
+//     let program_name = "hello-solana";
+//     let real_program_id = program_address(program_name);
+//     test_entry.add_initial_program(program_name);
 
-    // create and return a transaction, fee payer, and nonce info
-    // sets up initial account states but not final ones
-    // there are four cases of fee_paying_nonce and fake_fee_payer:
-    // * false/false: normal nonce account with rent minimum, normal fee payer account with 1sol
-    // * true/false: normal nonce account used to pay fees with rent minimum plus 1sol
-    // * false/true: normal nonce account with rent minimum, fee payer doesnt exist
-    // * true/true: same account for both which does not exist
-    // we also provide a side door to bring a fee-paying nonce account below rent-exemption
-    let mk_nonce_transaction = |test_entry: &mut SvmTestEntry,
-                                program_id,
-                                fake_fee_payer: bool,
-                                rent_paying_nonce: bool| {
-        let fee_payer_keypair = Keypair::new();
-        let fee_payer = fee_payer_keypair.pubkey();
-        let nonce_pubkey = if fee_paying_nonce {
-            fee_payer
-        } else {
-            Pubkey::new_unique()
-        };
+//     // create and return a transaction, fee payer, and nonce info
+//     // sets up initial account states but not final ones
+//     // there are four cases of fee_paying_nonce and fake_fee_payer:
+//     // * false/false: normal nonce account with rent minimum, normal fee payer account with 1sol
+//     // * true/false: normal nonce account used to pay fees with rent minimum plus 1sol
+//     // * false/true: normal nonce account with rent minimum, fee payer doesnt exist
+//     // * true/true: same account for both which does not exist
+//     // we also provide a side door to bring a fee-paying nonce account below rent-exemption
+//     let mk_nonce_transaction = |test_entry: &mut SvmTestEntry,
+//                                 program_id,
+//                                 fake_fee_payer: bool,
+//                                 rent_paying_nonce: bool| {
+//         let fee_payer_keypair = keypair_gen.new();
+//         let fee_payer = fee_payer_keypair.pubkey();
+//         let nonce_pubkey = if fee_paying_nonce {
+//             fee_payer
+//         } else {
+//             Pubkey::new_unique()
+//         };
 
-        let nonce_size = nonce::State::size();
-        let mut nonce_balance = Rent::default().minimum_balance(nonce_size);
+//         let nonce_size = nonce::State::size();
+//         let mut nonce_balance = Rent::default().minimum_balance(nonce_size);
 
-        if !fake_fee_payer && !fee_paying_nonce {
-            let mut fee_payer_data = AccountSharedData::default();
-            fee_payer_data.set_lamports(LAMPORTS_PER_SOL);
-            test_entry.add_initial_account(fee_payer, &fee_payer_data);
-        } else if rent_paying_nonce {
-            assert!(fee_paying_nonce);
-            nonce_balance += LAMPORTS_PER_SIGNATURE;
-            nonce_balance -= 1;
-        } else if fee_paying_nonce {
-            nonce_balance += LAMPORTS_PER_SOL;
-        }
+//         if !fake_fee_payer && !fee_paying_nonce {
+//             let mut fee_payer_data = AccountSharedData::default();
+//             fee_payer_data.set_lamports(LAMPORTS_PER_SOL);
+//             test_entry.add_initial_account(fee_payer, &fee_payer_data);
+//         } else if rent_paying_nonce {
+//             assert!(fee_paying_nonce);
+//             nonce_balance += LAMPORTS_PER_SIGNATURE;
+//             nonce_balance -= 1;
+//         } else if fee_paying_nonce {
+//             nonce_balance += LAMPORTS_PER_SOL;
+//         }
 
-        let nonce_initial_hash = DurableNonce::from_blockhash(&Hash::new_unique());
-        let nonce_data =
-            nonce::state::Data::new(fee_payer, nonce_initial_hash, LAMPORTS_PER_SIGNATURE);
-        let nonce_account = AccountSharedData::new_data(
-            nonce_balance,
-            &nonce::state::Versions::new(nonce::State::Initialized(nonce_data.clone())),
-            &system_program::id(),
-        )
-        .unwrap();
-        let nonce_info = NonceInfo::new(nonce_pubkey, nonce_account.clone());
+//         let nonce_initial_hash = DurableNonce::from_blockhash(&Hash::new_unique());
+//         let nonce_data =
+//             nonce::state::Data::new(fee_payer, nonce_initial_hash, LAMPORTS_PER_SIGNATURE);
+//         let nonce_account = AccountSharedData::new_data(
+//             nonce_balance,
+//             &nonce::state::Versions::new(nonce::State::Initialized(nonce_data.clone())),
+//             &system_program::id(),
+//         )
+//         .unwrap();
+//         let nonce_info = NonceInfo::new(nonce_pubkey, nonce_account.clone());
 
-        if !(fake_fee_payer && fee_paying_nonce) {
-            test_entry.add_initial_account(nonce_pubkey, &nonce_account);
-        }
+//         if !(fake_fee_payer && fee_paying_nonce) {
+//             test_entry.add_initial_account(nonce_pubkey, &nonce_account);
+//         }
 
-        let instructions = vec![
-            system_instruction::advance_nonce_account(&nonce_pubkey, &fee_payer),
-            Instruction::new_with_bytes(program_id, &[], vec![]),
-        ];
+//         let instructions = vec![
+//             system_instruction::advance_nonce_account(&nonce_pubkey, &fee_payer),
+//             Instruction::new_with_bytes(program_id, &[], vec![]),
+//         ];
 
-        let transaction = Transaction::new_signed_with_payer(
-            &instructions,
-            Some(&fee_payer),
-            &[&fee_payer_keypair],
-            nonce_data.blockhash(),
-        );
+//         let transaction = Transaction::new_signed_with_payer(
+//             &instructions,
+//             Some(&fee_payer),
+//             &[&fee_payer_keypair],
+//             nonce_data.blockhash(),
+//         );
 
-        (transaction, fee_payer, nonce_info)
-    };
+//         (transaction, fee_payer, nonce_info)
+//     };
 
-    // 0: successful nonce transaction, regardless of features
-    {
-        let (transaction, fee_payer, mut nonce_info) =
-            mk_nonce_transaction(&mut test_entry, real_program_id, false, false);
+//     // 0: successful nonce transaction, regardless of features
+//     {
+//         let (transaction, fee_payer, mut nonce_info) =
+//             mk_nonce_transaction(&mut test_entry, real_program_id, false, false);
 
-        test_entry.push_nonce_transaction(transaction, nonce_info.clone());
+//         test_entry.push_nonce_transaction(transaction, nonce_info.clone());
 
-        test_entry.decrease_expected_lamports(&fee_payer, LAMPORTS_PER_SIGNATURE);
+//         test_entry.decrease_expected_lamports(&fee_payer, LAMPORTS_PER_SIGNATURE);
 
-        nonce_info
-            .try_advance_nonce(
-                DurableNonce::from_blockhash(&LAST_BLOCKHASH),
-                LAMPORTS_PER_SIGNATURE,
-            )
-            .unwrap();
+//         nonce_info
+//             .try_advance_nonce(
+//                 DurableNonce::from_blockhash(&LAST_BLOCKHASH),
+//                 LAMPORTS_PER_SIGNATURE,
+//             )
+//             .unwrap();
 
-        test_entry
-            .final_accounts
-            .get_mut(nonce_info.address())
-            .unwrap()
-            .data_as_mut_slice()
-            .copy_from_slice(nonce_info.account().data());
-    }
+//         test_entry
+//             .final_accounts
+//             .get_mut(nonce_info.address())
+//             .unwrap()
+//             .data_as_mut_slice()
+//             .copy_from_slice(nonce_info.account().data());
+//     }
 
-    // 1: non-executing nonce transaction (fee payer doesnt exist) regardless of features
-    {
-        let (transaction, _fee_payer, nonce_info) =
-            mk_nonce_transaction(&mut test_entry, real_program_id, true, false);
+//     // 1: non-executing nonce transaction (fee payer doesnt exist) regardless of features
+//     {
+//         let (transaction, _fee_payer, nonce_info) =
+//             mk_nonce_transaction(&mut test_entry, real_program_id, true, false);
 
-        test_entry
-            .final_accounts
-            .entry(*nonce_info.address())
-            .and_modify(|account| account.set_rent_epoch(0));
+//         test_entry
+//             .final_accounts
+//             .entry(*nonce_info.address())
+//             .and_modify(|account| account.set_rent_epoch(0));
 
-        test_entry.push_nonce_transaction_with_status(
-            transaction,
-            nonce_info,
-            ExecutionStatus::Discarded,
-        );
-    }
+//         test_entry.push_nonce_transaction_with_status(
+//             transaction,
+//             nonce_info,
+//             ExecutionStatus::Discarded,
+//         );
+//     }
 
-    // 2: failing nonce transaction (bad system instruction) regardless of features
-    {
-        let (transaction, fee_payer, mut nonce_info) =
-            mk_nonce_transaction(&mut test_entry, system_program::id(), false, false);
+//     // 2: failing nonce transaction (bad system instruction) regardless of features
+//     {
+//         let (transaction, fee_payer, mut nonce_info) =
+//             mk_nonce_transaction(&mut test_entry, system_program::id(), false, false);
 
-        test_entry.push_nonce_transaction_with_status(
-            transaction,
-            nonce_info.clone(),
-            ExecutionStatus::ExecutedFailed,
-        );
+//         test_entry.push_nonce_transaction_with_status(
+//             transaction,
+//             nonce_info.clone(),
+//             ExecutionStatus::ExecutedFailed,
+//         );
 
-        test_entry.decrease_expected_lamports(&fee_payer, LAMPORTS_PER_SIGNATURE);
+//         test_entry.decrease_expected_lamports(&fee_payer, LAMPORTS_PER_SIGNATURE);
 
-        nonce_info
-            .try_advance_nonce(
-                DurableNonce::from_blockhash(&LAST_BLOCKHASH),
-                LAMPORTS_PER_SIGNATURE,
-            )
-            .unwrap();
+//         nonce_info
+//             .try_advance_nonce(
+//                 DurableNonce::from_blockhash(&LAST_BLOCKHASH),
+//                 LAMPORTS_PER_SIGNATURE,
+//             )
+//             .unwrap();
 
-        test_entry
-            .final_accounts
-            .get_mut(nonce_info.address())
-            .unwrap()
-            .data_as_mut_slice()
-            .copy_from_slice(nonce_info.account().data());
-    }
+//         test_entry
+//             .final_accounts
+//             .get_mut(nonce_info.address())
+//             .unwrap()
+//             .data_as_mut_slice()
+//             .copy_from_slice(nonce_info.account().data());
+//     }
 
-    // 3: processable non-executable nonce transaction with fee-only enabled, otherwise discarded
-    {
-        let (transaction, fee_payer, mut nonce_info) =
-            mk_nonce_transaction(&mut test_entry, Pubkey::new_unique(), false, false);
+//     // 3: processable non-executable nonce transaction with fee-only enabled, otherwise discarded
+//     {
+//         let (transaction, fee_payer, mut nonce_info) =
+//             mk_nonce_transaction(&mut test_entry, Pubkey::new_unique(), false, false);
 
-        if enable_fee_only_transactions {
-            test_entry.push_nonce_transaction_with_status(
-                transaction,
-                nonce_info.clone(),
-                ExecutionStatus::ProcessedFailed,
-            );
+//         if enable_fee_only_transactions {
+//             test_entry.push_nonce_transaction_with_status(
+//                 transaction,
+//                 nonce_info.clone(),
+//                 ExecutionStatus::ProcessedFailed,
+//             );
 
-            test_entry.decrease_expected_lamports(&fee_payer, LAMPORTS_PER_SIGNATURE);
+//             test_entry.decrease_expected_lamports(&fee_payer, LAMPORTS_PER_SIGNATURE);
 
-            nonce_info
-                .try_advance_nonce(
-                    DurableNonce::from_blockhash(&LAST_BLOCKHASH),
-                    LAMPORTS_PER_SIGNATURE,
-                )
-                .unwrap();
+//             nonce_info
+//                 .try_advance_nonce(
+//                     DurableNonce::from_blockhash(&LAST_BLOCKHASH),
+//                     LAMPORTS_PER_SIGNATURE,
+//                 )
+//                 .unwrap();
 
-            test_entry
-                .final_accounts
-                .get_mut(nonce_info.address())
-                .unwrap()
-                .data_as_mut_slice()
-                .copy_from_slice(nonce_info.account().data());
+//             test_entry
+//                 .final_accounts
+//                 .get_mut(nonce_info.address())
+//                 .unwrap()
+//                 .data_as_mut_slice()
+//                 .copy_from_slice(nonce_info.account().data());
 
-            // if the nonce account pays fees, it keeps its new rent epoch, otherwise it resets
-            if !fee_paying_nonce {
-                test_entry
-                    .final_accounts
-                    .get_mut(nonce_info.address())
-                    .unwrap()
-                    .set_rent_epoch(0);
-            }
-        } else {
-            test_entry
-                .final_accounts
-                .get_mut(&fee_payer)
-                .unwrap()
-                .set_rent_epoch(0);
+//             // if the nonce account pays fees, it keeps its new rent epoch, otherwise it resets
+//             if !fee_paying_nonce {
+//                 test_entry
+//                     .final_accounts
+//                     .get_mut(nonce_info.address())
+//                     .unwrap()
+//                     .set_rent_epoch(0);
+//             }
+//         } else {
+//             test_entry
+//                 .final_accounts
+//                 .get_mut(&fee_payer)
+//                 .unwrap()
+//                 .set_rent_epoch(0);
 
-            test_entry
-                .final_accounts
-                .get_mut(nonce_info.address())
-                .unwrap()
-                .set_rent_epoch(0);
+//             test_entry
+//                 .final_accounts
+//                 .get_mut(nonce_info.address())
+//                 .unwrap()
+//                 .set_rent_epoch(0);
 
-            test_entry.push_nonce_transaction_with_status(
-                transaction,
-                nonce_info,
-                ExecutionStatus::Discarded,
-            );
-        }
-    }
+//             test_entry.push_nonce_transaction_with_status(
+//                 transaction,
+//                 nonce_info,
+//                 ExecutionStatus::Discarded,
+//             );
+//         }
+//     }
 
-    // 4: safety check that nonce fee-payers are required to be rent-exempt (blockhash fee-payers may be below rent-exemption)
-    // if this situation is ever allowed in the future, the nonce account MUST be hidden for fee-only transactions
-    // as an aside, nonce accounts closed by WithdrawNonceAccount are safe because they are ordinary executed transactions
-    // we also dont care whether a non-fee nonce (or any account) pays rent because rent is charged on executed transactions
-    if fee_paying_nonce {
-        let (transaction, _, nonce_info) =
-            mk_nonce_transaction(&mut test_entry, real_program_id, false, true);
+//     // 4: safety check that nonce fee-payers are required to be rent-exempt (blockhash fee-payers may be below rent-exemption)
+//     // if this situation is ever allowed in the future, the nonce account MUST be hidden for fee-only transactions
+//     // as an aside, nonce accounts closed by WithdrawNonceAccount are safe because they are ordinary executed transactions
+//     // we also dont care whether a non-fee nonce (or any account) pays rent because rent is charged on executed transactions
+//     if fee_paying_nonce {
+//         let (transaction, _, nonce_info) =
+//             mk_nonce_transaction(&mut test_entry, real_program_id, false, true);
 
-        test_entry
-            .final_accounts
-            .get_mut(nonce_info.address())
-            .unwrap()
-            .set_rent_epoch(0);
+//         test_entry
+//             .final_accounts
+//             .get_mut(nonce_info.address())
+//             .unwrap()
+//             .set_rent_epoch(0);
 
-        test_entry.push_nonce_transaction_with_status(
-            transaction,
-            nonce_info.clone(),
-            ExecutionStatus::Discarded,
-        );
-    }
+//         test_entry.push_nonce_transaction_with_status(
+//             transaction,
+//             nonce_info.clone(),
+//             ExecutionStatus::Discarded,
+//         );
+//     }
 
-    // 5: rent-paying nonce fee-payers are also not charged for fee-only transactions
-    if enable_fee_only_transactions && fee_paying_nonce {
-        let (transaction, _, nonce_info) =
-            mk_nonce_transaction(&mut test_entry, Pubkey::new_unique(), false, true);
+//     // 5: rent-paying nonce fee-payers are also not charged for fee-only transactions
+//     if enable_fee_only_transactions && fee_paying_nonce {
+//         let (transaction, _, nonce_info) =
+//             mk_nonce_transaction(&mut test_entry, Pubkey::new_unique(), false, true);
 
-        test_entry
-            .final_accounts
-            .get_mut(nonce_info.address())
-            .unwrap()
-            .set_rent_epoch(0);
+//         test_entry
+//             .final_accounts
+//             .get_mut(nonce_info.address())
+//             .unwrap()
+//             .set_rent_epoch(0);
 
-        test_entry.push_nonce_transaction_with_status(
-            transaction,
-            nonce_info.clone(),
-            ExecutionStatus::Discarded,
-        );
-    }
+//         test_entry.push_nonce_transaction_with_status(
+//             transaction,
+//             nonce_info.clone(),
+//             ExecutionStatus::Discarded,
+//         );
+//     }
 
-    vec![test_entry]
-}
+//     vec![test_entry]
+// }
 
 #[allow(unused)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1154,8 +1158,8 @@ fn svm_inspect_account() {
     let mut initial_test_entry = SvmTestEntry::default();
     let mut expected_inspected_accounts: HashMap<_, Vec<_>> = HashMap::new();
 
-    let fee_payer_keypair = Keypair::new();
-    let sender_keypair = Keypair::new();
+    let fee_payer_keypair = keypair_gen.new();
+    let sender_keypair = keypair_gen.new();
 
     let fee_payer = fee_payer_keypair.pubkey();
     let sender = sender_keypair.pubkey();

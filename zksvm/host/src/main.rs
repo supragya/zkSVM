@@ -24,10 +24,10 @@ fn main() {
     // ExecutorEnvBuilder::build().
 
     // For example:
-    let input: u32 = 15 * u32::pow(2, 27) + 1;
+    // let input: u32 = 15 * u32::pow(2, 27) + 1;
     let env = ExecutorEnv::builder()
-        .write(&input)
-        .unwrap()
+        // .write(&input)
+        // .unwrap()
         .build()
         .unwrap();
 
