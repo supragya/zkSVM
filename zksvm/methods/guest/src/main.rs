@@ -13,13 +13,4 @@ fn main() {
         let env = test_environment::SvmTestEnvironment::create(test_entry);
         env.execute();
     }
-    // TODO: Implement your guest code here
-
-    // read the input
-    // let input: u32 = env::read();
-
-    // TODO: do something with the input
-
-    // write public output to the journal
-    // env::commit(&input);
 }
